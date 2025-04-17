@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, RefreshCw } from 'lucide-react';
@@ -28,7 +29,8 @@ const TemplatesPage = () => {
     // Simulate GitHub connection
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsGithubConnected(true);
-    setTemplates(mockTemplates);
+    // Removed mockTemplates reference
+    setTemplates([]);
   };
 
   const handleRefreshTemplates = async () => {
