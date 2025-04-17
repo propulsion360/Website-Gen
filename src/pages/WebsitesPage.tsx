@@ -1,20 +1,17 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Filter } from 'lucide-react';
+import { Plus, Github } from 'lucide-react';
 import { toast } from 'sonner';
 import PageHeader from '@/components/layout/PageHeader';
-import WebsiteList from '@/components/websites/WebsiteList';
+import WebsiteDetails from '@/components/websites/WebsiteDetails';
 import EditWebsiteDialog from '@/components/websites/EditWebsiteDialog';
+import WebsiteTabsContent from '@/components/websites/WebsiteTabsContent';
+import GitHubConnectionDialog from '@/components/github/GitHubConnectionDialog';
+import useGithubIntegration from '@/hooks/useGithubIntegration';
 import { Website } from '@/types/website';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle 
-} from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 
 // Mock data with content and styles
 const mockWebsites: Website[] = [
@@ -129,28 +126,39 @@ const WebsitesPage = () => {
   const [selectedWebsite, setSelectedWebsite] = useState<Website | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isGitHubDialogOpen, setIsGitHubDialogOpen] = useState(false);
+  
+  const { 
+    isConnecting, 
+    isConnected, 
+    connectToGithub, 
+    disconnectGithub,
+    pushToGithub, 
+    getRepositoryUrl,
+    credentials 
+  } = useGithubIntegration();
 
-  const handlePushToGithub = (website: Website) => {
-    toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-      {
-        loading: 'Pushing to GitHub...',
-        success: () => {
-          const updatedWebsites = websites.map(w => 
-            w.id === website.id 
-              ? { 
-                  ...w, 
-                  status: 'published' as const,
-                  githubUrl: `https://github.com/example/${w.name.toLowerCase().replace(/\s+/g, '-')}` 
-                } 
-              : w
-          );
-          setWebsites(updatedWebsites);
-          return `${website.name} successfully pushed to GitHub`;
-        },
-        error: 'Failed to push to GitHub',
-      }
-    );
+  const handlePushToGithub = async (website: Website) => {
+    if (!isConnected) {
+      toast.error('Please connect to GitHub first');
+      setIsGitHubDialogOpen(true);
+      return;
+    }
+    
+    const success = await pushToGithub(website);
+    
+    if (success) {
+      const updatedWebsites = websites.map(w => 
+        w.id === website.id 
+          ? { 
+              ...w, 
+              status: 'published' as const,
+              githubUrl: getRepositoryUrl(w.name)
+            } 
+          : w
+      );
+      setWebsites(updatedWebsites);
+    }
   };
 
   const handleViewDetails = (website: Website) => {
@@ -181,6 +189,17 @@ const WebsitesPage = () => {
         }}
       />
 
+      <div className="flex items-center justify-between mb-6">
+        <Button
+          variant={isConnected ? "outline" : "default"}
+          className={`${isConnected ? 'bg-green-50 text-green-700 hover:bg-green-100 border-green-200' : ''}`}
+          onClick={() => setIsGitHubDialogOpen(true)}
+        >
+          <Github className="h-4 w-4 mr-2" />
+          {isConnected ? 'Connected to GitHub' : 'Connect to GitHub'}
+        </Button>
+      </div>
+
       <Tabs defaultValue="all" className="mt-6">
         <div className="flex items-center justify-between mb-4">
           <TabsList>
@@ -191,113 +210,49 @@ const WebsitesPage = () => {
           </TabsList>
         </div>
         
-        <TabsContent value="all">
-          <WebsiteList 
-            websites={websites} 
-            onPushToGithub={handlePushToGithub}
-            onViewDetails={handleViewDetails}
-            onEditWebsite={handleEditWebsite}
-          />
-        </TabsContent>
+        <WebsiteTabsContent 
+          tabValue="all"
+          websites={websites}
+          onPushToGithub={handlePushToGithub}
+          onViewDetails={handleViewDetails}
+          onEditWebsite={handleEditWebsite}
+        />
         
-        <TabsContent value="draft">
-          <WebsiteList 
-            websites={websites.filter(w => w.status === 'draft')} 
-            onPushToGithub={handlePushToGithub}
-            onViewDetails={handleViewDetails}
-            onEditWebsite={handleEditWebsite}
-          />
-        </TabsContent>
+        <WebsiteTabsContent 
+          tabValue="draft"
+          websites={websites}
+          filteredWebsites={websites.filter(w => w.status === 'draft')}
+          onPushToGithub={handlePushToGithub}
+          onViewDetails={handleViewDetails}
+          onEditWebsite={handleEditWebsite}
+        />
         
-        <TabsContent value="ready">
-          <WebsiteList 
-            websites={websites.filter(w => w.status === 'ready')} 
-            onPushToGithub={handlePushToGithub}
-            onViewDetails={handleViewDetails}
-            onEditWebsite={handleEditWebsite}
-          />
-        </TabsContent>
+        <WebsiteTabsContent 
+          tabValue="ready"
+          websites={websites}
+          filteredWebsites={websites.filter(w => w.status === 'ready')}
+          onPushToGithub={handlePushToGithub}
+          onViewDetails={handleViewDetails}
+          onEditWebsite={handleEditWebsite}
+        />
         
-        <TabsContent value="published">
-          <WebsiteList 
-            websites={websites.filter(w => w.status === 'published')} 
-            onPushToGithub={handlePushToGithub}
-            onViewDetails={handleViewDetails}
-            onEditWebsite={handleEditWebsite}
-          />
-        </TabsContent>
+        <WebsiteTabsContent 
+          tabValue="published"
+          websites={websites}
+          filteredWebsites={websites.filter(w => w.status === 'published')}
+          onPushToGithub={handlePushToGithub}
+          onViewDetails={handleViewDetails}
+          onEditWebsite={handleEditWebsite}
+        />
       </Tabs>
 
       {selectedWebsite && (
         <>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent className="max-w-3xl">
-              {selectedWebsite && (
-                <>
-                  <DialogHeader>
-                    <DialogTitle>{selectedWebsite.name}</DialogTitle>
-                    <DialogDescription>
-                      Website details and preview
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                    <div>
-                      <div className="aspect-video bg-gray-100 rounded-md overflow-hidden mb-4">
-                        {selectedWebsite.preview ? (
-                          <img 
-                            src={selectedWebsite.preview} 
-                            alt={selectedWebsite.name} 
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                            <span className="text-gray-400">No preview available</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Client</h4>
-                        <p>{selectedWebsite.client}</p>
-                      </div>
-                      
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Template</h4>
-                        <p>{selectedWebsite.template}</p>
-                      </div>
-                      
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Status</h4>
-                        <p className="capitalize">{selectedWebsite.status}</p>
-                      </div>
-                      
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Description</h4>
-                        <p>{selectedWebsite.description || 'No description provided'}</p>
-                      </div>
-                      
-                      {selectedWebsite.githubUrl && (
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-500">GitHub Repository</h4>
-                          <a 
-                            href={selectedWebsite.githubUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
-                            {selectedWebsite.githubUrl}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </DialogContent>
-          </Dialog>
+          <WebsiteDetails 
+            website={selectedWebsite}
+            isOpen={isDialogOpen}
+            onClose={() => setIsDialogOpen(false)}
+          />
 
           <EditWebsiteDialog
             website={selectedWebsite}
@@ -307,6 +262,16 @@ const WebsitesPage = () => {
           />
         </>
       )}
+      
+      <GitHubConnectionDialog
+        isOpen={isGitHubDialogOpen}
+        onClose={() => setIsGitHubDialogOpen(false)}
+        onConnect={connectToGithub}
+        onDisconnect={disconnectGithub}
+        isConnecting={isConnecting}
+        isConnected={isConnected}
+        credentials={credentials}
+      />
     </div>
   );
 };
