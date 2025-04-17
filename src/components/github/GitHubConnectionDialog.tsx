@@ -16,7 +16,7 @@ import { Github, Loader2, LogOut } from 'lucide-react';
 interface GitHubConnectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConnect: (token: string, username: string) => Promise<boolean>;
+  onConnect: (token?: string, username?: string) => Promise<boolean>;
   onDisconnect: () => void;
   isConnecting: boolean;
   isConnected: boolean;
@@ -51,8 +51,11 @@ const GitHubConnectionDialog = ({
   };
 
   const handleDemoConnect = async () => {
-    await onConnect();
-    onClose();
+    // Fixed: Pass optional params as undefined
+    const success = await onConnect(undefined, undefined);
+    if (success) {
+      onClose();
+    }
   };
 
   return (
