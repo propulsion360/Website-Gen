@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Filter } from 'lucide-react';
@@ -15,7 +14,7 @@ import {
   DialogTitle 
 } from '@/components/ui/dialog';
 
-// Mock data
+// Mock data with content and styles
 const mockWebsites: Website[] = [
   {
     id: '1',
@@ -26,6 +25,30 @@ const mockWebsites: Website[] = [
     description: 'Corporate website with about, services, and contact pages',
     createdAt: '2 days ago',
     preview: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=800&q=80',
+    content: {
+      sections: [
+        {
+          id: 'hero-title',
+          type: 'text',
+          label: 'Hero Title',
+          content: 'Welcome to Acme Inc.'
+        },
+        {
+          id: 'hero-image',
+          type: 'image',
+          label: 'Hero Image',
+          content: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=800&q=80'
+        }
+      ]
+    },
+    styles: {
+      colors: {
+        primary: '#9b87f5',
+        secondary: '#7E69AB',
+        text: '#1A1F2C',
+        background: '#ffffff'
+      }
+    }
   },
   {
     id: '2',
@@ -37,6 +60,30 @@ const mockWebsites: Website[] = [
     createdAt: '1 week ago',
     githubUrl: 'https://github.com/example/techstore',
     preview: 'https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=800&q=80',
+    content: {
+      sections: [
+        {
+          id: 'hero-title',
+          type: 'text',
+          label: 'Hero Title',
+          content: 'Welcome to TechStore'
+        },
+        {
+          id: 'hero-image',
+          type: 'image',
+          label: 'Hero Image',
+          content: 'https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=800&q=80'
+        }
+      ]
+    },
+    styles: {
+      colors: {
+        primary: '#9b87f5',
+        secondary: '#7E69AB',
+        text: '#1A1F2C',
+        background: '#ffffff'
+      }
+    }
   },
   {
     id: '3',
@@ -47,6 +94,30 @@ const mockWebsites: Website[] = [
     description: 'Personal blog for sharing articles and photography',
     createdAt: '3 days ago',
     preview: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+    content: {
+      sections: [
+        {
+          id: 'hero-title',
+          type: 'text',
+          label: 'Hero Title',
+          content: 'Welcome to John Smith Blog'
+        },
+        {
+          id: 'hero-image',
+          type: 'image',
+          label: 'Hero Image',
+          content: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80'
+        }
+      ]
+    },
+    styles: {
+      colors: {
+        primary: '#9b87f5',
+        secondary: '#7E69AB',
+        text: '#1A1F2C',
+        background: '#ffffff'
+      }
+    }
   },
 ];
 
@@ -55,20 +126,19 @@ const WebsitesPage = () => {
   const [websites, setWebsites] = useState<Website[]>(mockWebsites);
   const [selectedWebsite, setSelectedWebsite] = useState<Website | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handlePushToGithub = (website: Website) => {
-    // Simulate GitHub push
     toast.promise(
       new Promise((resolve) => setTimeout(resolve, 2000)),
       {
         loading: 'Pushing to GitHub...',
         success: () => {
-          // Fix: Explicitly use a valid literal type for status
           const updatedWebsites = websites.map(w => 
             w.id === website.id 
               ? { 
                   ...w, 
-                  status: 'published' as const, // Explicitly cast to the literal type
+                  status: 'published' as const,
                   githubUrl: `https://github.com/example/${w.name.toLowerCase().replace(/\s+/g, '-')}` 
                 } 
               : w
@@ -84,6 +154,16 @@ const WebsitesPage = () => {
   const handleViewDetails = (website: Website) => {
     setSelectedWebsite(website);
     setIsDialogOpen(true);
+  };
+
+  const handleEditWebsite = (website: Website) => {
+    setSelectedWebsite(website);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveWebsite = (updatedWebsite: Website) => {
+    setWebsites(websites.map(w => w.id === updatedWebsite.id ? updatedWebsite : w));
+    toast.success('Website updated successfully');
   };
 
   return (
@@ -141,74 +221,85 @@ const WebsitesPage = () => {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl">
-          {selectedWebsite && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{selectedWebsite.name}</DialogTitle>
-                <DialogDescription>
-                  Website details and preview
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                <div>
-                  <div className="aspect-video bg-gray-100 rounded-md overflow-hidden mb-4">
-                    {selectedWebsite.preview ? (
-                      <img 
-                        src={selectedWebsite.preview} 
-                        alt={selectedWebsite.name} 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                        <span className="text-gray-400">No preview available</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Client</h4>
-                    <p>{selectedWebsite.client}</p>
-                  </div>
+      {selectedWebsite && (
+        <>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-3xl">
+              {selectedWebsite && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>{selectedWebsite.name}</DialogTitle>
+                    <DialogDescription>
+                      Website details and preview
+                    </DialogDescription>
+                  </DialogHeader>
                   
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Template</h4>
-                    <p>{selectedWebsite.template}</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Status</h4>
-                    <p className="capitalize">{selectedWebsite.status}</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Description</h4>
-                    <p>{selectedWebsite.description || 'No description provided'}</p>
-                  </div>
-                  
-                  {selectedWebsite.githubUrl && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                     <div>
-                      <h4 className="text-sm font-medium text-gray-500">GitHub Repository</h4>
-                      <a 
-                        href={selectedWebsite.githubUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        {selectedWebsite.githubUrl}
-                      </a>
+                      <div className="aspect-video bg-gray-100 rounded-md overflow-hidden mb-4">
+                        {selectedWebsite.preview ? (
+                          <img 
+                            src={selectedWebsite.preview} 
+                            alt={selectedWebsite.name} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                            <span className="text-gray-400">No preview available</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500">Client</h4>
+                        <p>{selectedWebsite.client}</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500">Template</h4>
+                        <p>{selectedWebsite.template}</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500">Status</h4>
+                        <p className="capitalize">{selectedWebsite.status}</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500">Description</h4>
+                        <p>{selectedWebsite.description || 'No description provided'}</p>
+                      </div>
+                      
+                      {selectedWebsite.githubUrl && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-500">GitHub Repository</h4>
+                          <a 
+                            href={selectedWebsite.githubUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {selectedWebsite.githubUrl}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          <EditWebsiteDialog
+            website={selectedWebsite}
+            isOpen={isEditDialogOpen}
+            onClose={() => setIsEditDialogOpen(false)}
+            onSave={handleSaveWebsite}
+          />
+        </>
+      )}
     </div>
   );
 };

@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Eye, Github, Globe, MoreVertical } from 'lucide-react';
+import { Eye, Github, Globe, MoreVertical, Edit } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Website } from '@/types/website';
 import { Badge } from '@/components/ui/badge';
@@ -11,9 +10,10 @@ interface WebsiteCardProps {
   website: Website;
   onPushToGithub: (website: Website) => void;
   onViewDetails: (website: Website) => void;
+  onEditWebsite: (website: Website) => void;
 }
 
-const WebsiteCard = ({ website, onPushToGithub, onViewDetails }: WebsiteCardProps) => {
+const WebsiteCard = ({ website, onPushToGithub, onViewDetails, onEditWebsite }: WebsiteCardProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft':
@@ -86,6 +86,14 @@ const WebsiteCard = ({ website, onPushToGithub, onViewDetails }: WebsiteCardProp
           <span>Created {website.createdAt}</span>
         </div>
         <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="text-xs flex items-center p-2"
+            onClick={() => onEditWebsite(website)}
+          >
+            <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+          </Button>
           <Button 
             variant="outline" 
             size="sm" 

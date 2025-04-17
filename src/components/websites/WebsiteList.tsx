@@ -7,9 +7,10 @@ interface WebsiteListProps {
   websites: Website[];
   onPushToGithub: (website: Website) => void;
   onViewDetails: (website: Website) => void;
+  onEditWebsite: (website: Website) => void;
 }
 
-const WebsiteList = ({ websites, onPushToGithub, onViewDetails }: WebsiteListProps) => {
+const WebsiteList = ({ websites, onPushToGithub, onViewDetails, onEditWebsite }: WebsiteListProps) => {
   if (!websites || websites.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-10 bg-gray-50 rounded-lg border border-dashed border-gray-300">
@@ -27,6 +28,7 @@ const WebsiteList = ({ websites, onPushToGithub, onViewDetails }: WebsiteListPro
           website={website} 
           onPushToGithub={onPushToGithub}
           onViewDetails={onViewDetails}
+          onEditWebsite={onEditWebsite}
         />
       ))}
     </div>
