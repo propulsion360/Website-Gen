@@ -29,16 +29,26 @@ const EditWebsiteDialog = ({ website, isOpen, onClose, onSave }: EditWebsiteDial
   };
 
   const handleColorChange = (colorKey: string, value: string) => {
-    setEditedWebsite(prev => ({
-      ...prev,
-      styles: {
-        ...prev.styles,
-        colors: {
-          ...(prev.styles?.colors || {}),
-          [colorKey]: value,
+    setEditedWebsite(prev => {
+      // Ensure we have a complete styles object with all required color properties
+      const currentColors = prev.styles?.colors || {
+        primary: '#9b87f5',
+        secondary: '#7E69AB',
+        text: '#1A1F2C',
+        background: '#ffffff'
+      };
+      
+      return {
+        ...prev,
+        styles: {
+          ...prev.styles,
+          colors: {
+            ...currentColors,
+            [colorKey]: value,
+          },
         },
-      },
-    }));
+      };
+    });
   };
 
   const handleSave = () => {
@@ -88,7 +98,7 @@ const EditWebsiteDialog = ({ website, isOpen, onClose, onSave }: EditWebsiteDial
           </TabsContent>
 
           <TabsContent value="styles" className="space-y-4">
-            {Object.entries(editedWebsite.styles?.colors || {}).map(([key, value]) => (
+            {editedWebsite.styles && Object.entries(editedWebsite.styles.colors).map(([key, value]) => (
               <div key={key} className="space-y-2">
                 <Label className="capitalize">{key} Color</Label>
                 <div className="flex gap-2">

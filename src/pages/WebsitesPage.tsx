@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import PageHeader from '@/components/layout/PageHeader';
 import WebsiteList from '@/components/websites/WebsiteList';
+import EditWebsiteDialog from '@/components/websites/EditWebsiteDialog';
 import { Website } from '@/types/website';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -164,6 +166,7 @@ const WebsitesPage = () => {
   const handleSaveWebsite = (updatedWebsite: Website) => {
     setWebsites(websites.map(w => w.id === updatedWebsite.id ? updatedWebsite : w));
     toast.success('Website updated successfully');
+    setIsEditDialogOpen(false);
   };
 
   return (
@@ -193,6 +196,7 @@ const WebsitesPage = () => {
             websites={websites} 
             onPushToGithub={handlePushToGithub}
             onViewDetails={handleViewDetails}
+            onEditWebsite={handleEditWebsite}
           />
         </TabsContent>
         
@@ -201,6 +205,7 @@ const WebsitesPage = () => {
             websites={websites.filter(w => w.status === 'draft')} 
             onPushToGithub={handlePushToGithub}
             onViewDetails={handleViewDetails}
+            onEditWebsite={handleEditWebsite}
           />
         </TabsContent>
         
@@ -209,6 +214,7 @@ const WebsitesPage = () => {
             websites={websites.filter(w => w.status === 'ready')} 
             onPushToGithub={handlePushToGithub}
             onViewDetails={handleViewDetails}
+            onEditWebsite={handleEditWebsite}
           />
         </TabsContent>
         
@@ -217,6 +223,7 @@ const WebsitesPage = () => {
             websites={websites.filter(w => w.status === 'published')} 
             onPushToGithub={handlePushToGithub}
             onViewDetails={handleViewDetails}
+            onEditWebsite={handleEditWebsite}
           />
         </TabsContent>
       </Tabs>
