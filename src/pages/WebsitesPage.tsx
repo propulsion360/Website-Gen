@@ -63,9 +63,14 @@ const WebsitesPage = () => {
       {
         loading: 'Pushing to GitHub...',
         success: () => {
+          // Fix: Explicitly use a valid literal type for status
           const updatedWebsites = websites.map(w => 
             w.id === website.id 
-              ? { ...w, status: 'published', githubUrl: `https://github.com/example/${w.name.toLowerCase().replace(/\s+/g, '-')}` } 
+              ? { 
+                  ...w, 
+                  status: 'published' as const, // Explicitly cast to the literal type
+                  githubUrl: `https://github.com/example/${w.name.toLowerCase().replace(/\s+/g, '-')}` 
+                } 
               : w
           );
           setWebsites(updatedWebsites);
