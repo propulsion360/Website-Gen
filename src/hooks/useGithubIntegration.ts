@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Website } from '@/types/website';
 
@@ -8,70 +7,95 @@ interface GitHubCredentials {
   username: string;
 }
 
+interface GitHubRepo {
+  id: number;
+  name: string;
+  description: string;
+  html_url: string;
+  default_branch: string;
+  updated_at: string;
+}
+
 const useGithubIntegration = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [credentials, setCredentials] = useState<GitHubCredentials | null>(null);
+  const [templates, setTemplates] = useState<GitHubRepo[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
-  // Try to load credentials from localStorage
-  useState(() => {
+  useEffect(() => {
+    // Load stored credentials on mount
     const storedCredentials = localStorage.getItem('github_credentials');
     if (storedCredentials) {
       try {
         const parsed = JSON.parse(storedCredentials);
         setCredentials(parsed);
         setIsConnected(true);
+        fetchTemplateRepos(parsed.accessToken);
       } catch (error) {
         console.error('Failed to parse stored GitHub credentials:', error);
         localStorage.removeItem('github_credentials');
       }
     }
-  });
+  }, []);
 
-  const connectToGithub = async (token?: string, username?: string) => {
+  const fetchTemplateRepos = async (token: string) => {
+    setIsLoadingTemplates(true);
+    try {
+      const response = await fetch('https://api.github.com/user/repos?per_page=100', {
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch repositories');
+      }
+
+      const repos: GitHubRepo[] = await response.json();
+      const templateRepos = repos.filter(repo => repo.name.startsWith('template-'));
+      setTemplates(templateRepos);
+    } catch (error) {
+      console.error('Error fetching template repos:', error);
+      toast.error('Failed to fetch template repositories');
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
+
+  const connectToGithub = async (token: string, username: string) => {
     setIsConnecting(true);
     
     try {
-      // In a real implementation, this would initiate OAuth flow with GitHub
-      // For demo purposes, we're allowing manual token entry or mocking
-
-      if (token && username) {
-        // Validate the token with a test API call
-        const response = await fetch('https://api.github.com/user', {
-          headers: {
-            Authorization: `token ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Invalid GitHub token');
+      // Validate the token with a test API call
+      const response = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: 'application/vnd.github.v3+json',
         }
-        
-        // Store credentials
-        const newCredentials = { accessToken: token, username };
-        setCredentials(newCredentials);
-        localStorage.setItem('github_credentials', JSON.stringify(newCredentials));
-        
-        setIsConnected(true);
-        toast.success('Successfully connected to GitHub');
-        return true;
-      } else {
-        // For demo purposes, simulate successful connection
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Mock credentials
-        const mockCredentials = { 
-          accessToken: 'mock_token_' + Math.random().toString(36).substring(2),
-          username: 'demo_user'
-        };
-        
-        setCredentials(mockCredentials);
-        localStorage.setItem('github_credentials', JSON.stringify(mockCredentials));
-        
-        setIsConnected(true);
-        toast.success('Demo: Successfully connected to GitHub');
-        return true;
+      });
+      
+      if (!response.ok) {
+        throw new Error('Invalid GitHub token');
       }
+      
+      const userData = await response.json();
+      if (userData.login !== username) {
+        throw new Error('Username does not match the provided token');
+      }
+      
+      // Store credentials
+      const newCredentials = { accessToken: token, username };
+      setCredentials(newCredentials);
+      localStorage.setItem('github_credentials', JSON.stringify(newCredentials));
+      
+      // Fetch template repositories
+      await fetchTemplateRepos(token);
+      
+      setIsConnected(true);
+      toast.success('Successfully connected to GitHub');
+      return true;
     } catch (error) {
       console.error('Failed to connect to GitHub:', error);
       toast.error(`Failed to connect to GitHub: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -140,7 +164,10 @@ const useGithubIntegration = () => {
     disconnectGithub,
     pushToGithub,
     getRepositoryUrl,
-    credentials
+    credentials,
+    templates,
+    isLoadingTemplates,
+    refreshTemplates: () => credentials && fetchTemplateRepos(credentials.accessToken)
   };
 };
 
