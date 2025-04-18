@@ -37,22 +37,13 @@ export default function FormPage() {
 
   const handleSubmit = async (data: Record<string, any>) => {
     try {
-      // Get integration config from localStorage
-      const integrationConfig = JSON.parse(localStorage.getItem('integration_config') || '{}');
-      const githubCredentials = JSON.parse(localStorage.getItem('github_credentials') || '{}');
-
-      if (!githubCredentials?.accessToken || !integrationConfig?.vercelToken || !integrationConfig?.vercelTeamId) {
-        toast.error('Missing GitHub or Vercel credentials. Please check your settings.');
-        return;
-      }
-
       // 1. Generate website
       const websiteService = new WebsiteGenerationService(
-        githubCredentials.accessToken,
-        githubCredentials.username,
-        integrationConfig.vercelToken,
-        integrationConfig.vercelTeamId,
-        integrationConfig.enableStrapi ? integrationConfig.strapiWebhookUrl : undefined
+        process.env.GITHUB_TOKEN!,
+        process.env.GITHUB_ORG!,
+        process.env.VERCEL_TOKEN!,
+        process.env.VERCEL_TEAM_ID!,
+        process.env.STRAPI_WEBHOOK_URL
       );
 
       const result = await websiteService.generateWebsite(
@@ -69,10 +60,10 @@ export default function FormPage() {
             accent: data.accentColor || '#cccccc'
           }
         },
-        integrationConfig.enableStrapi
+        false
       );
 
-      // 2. Save submission with the correct deployment URL
+      // 2. Save submission
       await fetch('/api/forms/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,7 +74,7 @@ export default function FormPage() {
         })
       });
 
-      // 3. Send to GoHighLevel with the correct URL
+      // 3. Send to GoHighLevel
       await fetch('/api/webhook/gohighlevel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,11 +84,11 @@ export default function FormPage() {
         })
       });
 
-      // 4. Navigate to success page with the correct URL
-      navigate(`/form/success?url=${encodeURIComponent(result.deploymentUrl)}`);
+      // 4. Navigate to success page
+      navigate(`/form/success?url=${encodeURIComponent(result.deploymentUrl || '')}`);
     } catch (error) {
       console.error('Form submission failed:', error);
-      toast.error('Failed to generate website. Please check your settings and try again.');
+      toast.error('Failed to generate website');
     }
   };
 
