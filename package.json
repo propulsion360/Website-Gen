@@ -9,7 +9,11 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "setup-vercel": "ts-node scripts/setup-vercel-domains.ts"
+    "setup-vercel": "ts-node scripts/setup-vercel-domains.ts",
+    "deploy": "ts-node scripts/deploy.ts",
+    "deploy:setup": "ts-node scripts/deploy.ts setup",
+    "deploy:template": "ts-node scripts/deploy.ts deploy",
+    "deploy:site": "ts-node scripts/deploy.ts deploy"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Vercel
+.vercel
+vercel.config.json
+.vercel-deployment.json
+
+# Keep Lovable configuration clean
+scripts/deploy.ts
+.deployment-cache/
