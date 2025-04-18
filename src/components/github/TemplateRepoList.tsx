@@ -1,88 +1,135 @@
-
-import React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, GitBranch, RefreshCw } from 'lucide-react';
-
-interface GitHubRepo {
-  id: number;
-  name: string;
-  description: string;
-  html_url: string;
-  default_branch: string;
-  updated_at: string;
-}
+import { GitHubRepo } from '@/types/github';
+import { Client } from '@/types/client';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import useGithubIntegration from '@/hooks/useGithubIntegration';
+import TemplateCard from './TemplateCard';
+import TemplatePlaceholderDialog from './TemplatePlaceholderDialog';
+import { TemplateService } from '@/lib/services/templateService';
 
 interface TemplateRepoListProps {
   templates: GitHubRepo[];
   isLoading: boolean;
   onRefresh: () => void;
+  clients?: Client[];
 }
 
-const TemplateRepoList = ({ templates, isLoading, onRefresh }: TemplateRepoListProps) => {
+const TemplateRepoList: React.FC<TemplateRepoListProps> = ({
+  templates,
+  isLoading,
+  onRefresh,
+  clients = []
+}) => {
+  const [selectedTemplate, setSelectedTemplate] = useState<GitHubRepo | null>(null);
+  const [isPlaceholderDialogOpen, setIsPlaceholderDialogOpen] = useState(false);
+  const [isCloning, setIsCloning] = useState(false);
+  const { cloneTemplate, githubFetch } = useGithubIntegration();
+  const [templatesWithPlaceholders, setTemplatesWithPlaceholders] = useState<GitHubRepo[]>([]);
+
+  useEffect(() => {
+    const scanTemplates = async () => {
+      try {
+        const scannedTemplates = await Promise.all(
+          templates.map(async (template) => {
+            const metadata = await TemplateService.getTemplateMetadata(template, githubFetch);
+            return {
+              ...template,
+              placeholders: metadata.placeholders
+            };
+          })
+        );
+        setTemplatesWithPlaceholders(scannedTemplates);
+      } catch (error) {
+        console.error('Failed to scan templates:', error);
+        toast.error('Failed to scan templates for placeholders');
+      }
+    };
+
+    if (templates.length > 0) {
+      scanTemplates();
+    }
+  }, [templates, githubFetch]);
+
+  const handleUseTemplate = (template: GitHubRepo) => {
+    setSelectedTemplate(template);
+    setIsPlaceholderDialogOpen(true);
+  };
+
+  const handlePlaceholderSubmit = async (values: Record<string, string>) => {
+    if (!selectedTemplate) return;
+
+    setIsCloning(true);
+    try {
+      // Generate repo name from client business name or template name
+      const businessName = values.businessName || selectedTemplate.name;
+      const repoName = `client-${businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+      
+      // Clone the template and replace placeholders
+      await cloneTemplate(selectedTemplate, repoName, values);
+
+      toast.success(`Successfully created website from template`);
+      setIsPlaceholderDialogOpen(false);
+      setSelectedTemplate(null);
+    } catch (error) {
+      toast.error('Failed to create repository from template');
+    } finally {
+      setIsCloning(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  if (templatesWithPlaceholders.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">
+            <p className="text-gray-500 mb-4">No template repositories found</p>
+            <Button variant="outline" onClick={onRefresh}>
+              Refresh Templates
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div>
-          <CardTitle>GitHub Templates</CardTitle>
-          <CardDescription>Template repositories found in your GitHub account</CardDescription>
-        </div>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={onRefresh}
-          disabled={isLoading}
-          className={isLoading ? 'animate-spin' : ''}
-        >
-          <RefreshCw className="h-4 w-4" />
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[400px] pr-4">
-          {templates.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-8 text-center text-sm text-muted-foreground">
-              <p>No template repositories found.</p>
-              <p className="mt-1">Create repositories starting with &apos;template-&apos; to see them here.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {templates.map((repo) => (
-                <Card key={repo.id}>
-                  <div className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-medium">
-                          {repo.name.replace('template-', '')}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {repo.description || 'No description'}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => window.open(repo.html_url, '_blank')}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex items-center mt-4 text-xs text-muted-foreground">
-                      <GitBranch className="h-3 w-3 mr-1" />
-                      <span>{repo.default_branch}</span>
-                      <span className="mx-2">•</span>
-                      <span>
-                        Updated {new Date(repo.updated_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
-      </CardContent>
-    </Card>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {templatesWithPlaceholders.map((template) => (
+          <TemplateCard
+            key={template.id}
+            template={template}
+            onUseTemplate={handleUseTemplate}
+            isCloning={isCloning && selectedTemplate?.id === template.id}
+          />
+        ))}
+      </div>
+
+      {selectedTemplate && (
+        <TemplatePlaceholderDialog
+          isOpen={isPlaceholderDialogOpen}
+          onClose={() => {
+            setIsPlaceholderDialogOpen(false);
+            setSelectedTemplate(null);
+          }}
+          template={selectedTemplate}
+          onSubmit={handlePlaceholderSubmit}
+          clients={clients}
+          isLoading={isCloning}
+        />
+      )}
+    </>
   );
 };
 

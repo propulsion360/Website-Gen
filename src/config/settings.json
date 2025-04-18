@@ -1,0 +1,12 @@
+{
+  "github": {
+    "username": "propulsion360",
+    "email": "info@propulsion360.com",
+    "organization": "propulsion360"
+  },
+  "templates": {
+    "defaultName": "template-modern-business",
+    "defaultBranch": "main",
+    "categories": ["business", "portfolio", "landing-page"]
+  }
+} 

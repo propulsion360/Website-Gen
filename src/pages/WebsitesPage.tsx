@@ -1,7 +1,6 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Github } from 'lucide-react';
+import { Plus, Github, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import PageHeader from '@/components/layout/PageHeader';
 import WebsiteDetails from '@/components/websites/WebsiteDetails';
@@ -13,120 +12,14 @@ import { Website } from '@/types/website';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 
-// Mock data with content and styles
-const mockWebsites: Website[] = [
-  {
-    id: '1',
-    name: 'Acme Inc. Website',
-    client: 'Acme Corporation',
-    template: 'Business Portfolio',
-    status: 'ready',
-    description: 'Corporate website with about, services, and contact pages',
-    createdAt: '2 days ago',
-    preview: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=800&q=80',
-    content: {
-      sections: [
-        {
-          id: 'hero-title',
-          type: 'text',
-          label: 'Hero Title',
-          content: 'Welcome to Acme Inc.'
-        },
-        {
-          id: 'hero-image',
-          type: 'image',
-          label: 'Hero Image',
-          content: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=800&q=80'
-        }
-      ]
-    },
-    styles: {
-      colors: {
-        primary: '#9b87f5',
-        secondary: '#7E69AB',
-        text: '#1A1F2C',
-        background: '#ffffff'
-      }
-    }
-  },
-  {
-    id: '2',
-    name: 'TechStore',
-    client: 'Digital Solutions Ltd',
-    template: 'E-commerce Starter',
-    status: 'published',
-    description: 'Online store for tech products with shopping cart',
-    createdAt: '1 week ago',
-    githubUrl: 'https://github.com/example/techstore',
-    preview: 'https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=800&q=80',
-    content: {
-      sections: [
-        {
-          id: 'hero-title',
-          type: 'text',
-          label: 'Hero Title',
-          content: 'Welcome to TechStore'
-        },
-        {
-          id: 'hero-image',
-          type: 'image',
-          label: 'Hero Image',
-          content: 'https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=800&q=80'
-        }
-      ]
-    },
-    styles: {
-      colors: {
-        primary: '#9b87f5',
-        secondary: '#7E69AB',
-        text: '#1A1F2C',
-        background: '#ffffff'
-      }
-    }
-  },
-  {
-    id: '3',
-    name: 'John Smith Blog',
-    client: 'John Smith',
-    template: 'Personal Blog',
-    status: 'draft',
-    description: 'Personal blog for sharing articles and photography',
-    createdAt: '3 days ago',
-    preview: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
-    content: {
-      sections: [
-        {
-          id: 'hero-title',
-          type: 'text',
-          label: 'Hero Title',
-          content: 'Welcome to John Smith Blog'
-        },
-        {
-          id: 'hero-image',
-          type: 'image',
-          label: 'Hero Image',
-          content: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80'
-        }
-      ]
-    },
-    styles: {
-      colors: {
-        primary: '#9b87f5',
-        secondary: '#7E69AB',
-        text: '#1A1F2C',
-        background: '#ffffff'
-      }
-    }
-  },
-];
-
 const WebsitesPage = () => {
   const navigate = useNavigate();
-  const [websites, setWebsites] = useState<Website[]>(mockWebsites);
+  const [websites, setWebsites] = useState<Website[]>([]);
   const [selectedWebsite, setSelectedWebsite] = useState<Website | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isGitHubDialogOpen, setIsGitHubDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   const { 
     isConnecting, 
@@ -135,31 +28,87 @@ const WebsitesPage = () => {
     disconnectGithub,
     pushToGithub, 
     getRepositoryUrl,
-    credentials 
+    credentials,
+    githubFetch
   } = useGithubIntegration();
 
-  const handlePushToGithub = async (website: Website) => {
-    if (!isConnected) {
-      toast.error('Please connect to GitHub first');
-      setIsGitHubDialogOpen(true);
-      return;
-    }
-    
-    const success = await pushToGithub(website);
-    
-    if (success) {
-      const updatedWebsites = websites.map(w => 
-        w.id === website.id 
-          ? { 
-              ...w, 
-              status: 'published' as const,
-              githubUrl: getRepositoryUrl(w.name)
-            } 
-          : w
-      );
-      setWebsites(updatedWebsites);
-    }
-  };
+  // Fetch client websites from GitHub
+  useEffect(() => {
+    const fetchWebsites = async () => {
+      if (!isConnected || !credentials) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        // Get all repositories that start with 'client-'
+        const repos = await githubFetch('/user/repos?per_page=100');
+        const clientRepos = repos.filter((repo: any) => repo.name.startsWith('client-'));
+
+        // Convert repos to website format
+        const websiteList = await Promise.all(clientRepos.map(async (repo: any) => {
+          try {
+            // Try to get website config file
+            const configResponse = await githubFetch(`/repos/${credentials.username}/${repo.name}/contents/website.json`);
+            const configContent = JSON.parse(Buffer.from(configResponse.content, 'base64').toString('utf-8'));
+
+            return {
+              id: repo.id.toString(),
+              name: repo.name.replace('client-', ''),
+              client: configContent.businessName || repo.name.replace('client-', ''),
+              template: configContent.template || 'Unknown Template',
+              status: 'published',
+              description: repo.description || '',
+              createdAt: new Date(repo.created_at).toLocaleDateString(),
+              githubUrl: repo.html_url,
+              preview: configContent.preview || '',
+              content: configContent.content || {},
+              styles: configContent.styles || {
+                colors: {
+                  primary: '#9b87f5',
+                  secondary: '#7E69AB',
+                  text: '#1A1F2C',
+                  background: '#ffffff'
+                }
+              }
+            };
+          } catch (error) {
+            // If no config file, create basic website object
+            return {
+              id: repo.id.toString(),
+              name: repo.name.replace('client-', ''),
+              client: repo.name.replace('client-', ''),
+              template: 'Unknown Template',
+              status: 'published',
+              description: repo.description || '',
+              createdAt: new Date(repo.created_at).toLocaleDateString(),
+              githubUrl: repo.html_url,
+              preview: '',
+              content: {},
+              styles: {
+                colors: {
+                  primary: '#9b87f5',
+                  secondary: '#7E69AB',
+                  text: '#1A1F2C',
+                  background: '#ffffff'
+                }
+              }
+            };
+          }
+        }));
+
+        setWebsites(websiteList);
+      } catch (error) {
+        console.error('Failed to fetch websites:', error);
+        toast.error('Failed to load websites from GitHub');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchWebsites();
+  }, [isConnected, credentials]);
 
   const handleViewDetails = (website: Website) => {
     setSelectedWebsite(website);
@@ -171,10 +120,36 @@ const WebsitesPage = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveWebsite = (updatedWebsite: Website) => {
-    setWebsites(websites.map(w => w.id === updatedWebsite.id ? updatedWebsite : w));
-    toast.success('Website updated successfully');
-    setIsEditDialogOpen(false);
+  const handleSaveWebsite = async (updatedWebsite: Website) => {
+    try {
+      // Update website.json in GitHub
+      await handlePushToGithub(updatedWebsite);
+      setWebsites(websites.map(w => w.id === updatedWebsite.id ? updatedWebsite : w));
+      toast.success('Website updated successfully');
+      setIsEditDialogOpen(false);
+    } catch (error) {
+      toast.error('Failed to update website');
+    }
+  };
+
+  const handlePushToGithub = async (website: Website) => {
+    try {
+      await pushToGithub([{
+        path: 'website.json',
+        content: JSON.stringify({
+          businessName: website.client,
+          template: website.template,
+          preview: website.preview,
+          content: website.content,
+          styles: website.styles
+        }, null, 2),
+        message: 'Update website configuration'
+      }], `client-${website.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);
+      toast.success('Website pushed to GitHub successfully');
+    } catch (error) {
+      toast.error('Failed to push website to GitHub');
+      throw error;
+    }
   };
 
   return (
@@ -200,60 +175,70 @@ const WebsitesPage = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="all" className="mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="draft">Draft</TabsTrigger>
-            <TabsTrigger value="ready">Ready</TabsTrigger>
-            <TabsTrigger value="published">Published</TabsTrigger>
-          </TabsList>
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
         </div>
-        
-        <WebsiteTabsContent 
-          tabValue="all"
-          websites={websites}
-          onPushToGithub={handlePushToGithub}
-          onViewDetails={handleViewDetails}
-          onEditWebsite={handleEditWebsite}
-        />
-        
-        <WebsiteTabsContent 
-          tabValue="draft"
-          websites={websites}
-          filteredWebsites={websites.filter(w => w.status === 'draft')}
-          onPushToGithub={handlePushToGithub}
-          onViewDetails={handleViewDetails}
-          onEditWebsite={handleEditWebsite}
-        />
-        
-        <WebsiteTabsContent 
-          tabValue="ready"
-          websites={websites}
-          filteredWebsites={websites.filter(w => w.status === 'ready')}
-          onPushToGithub={handlePushToGithub}
-          onViewDetails={handleViewDetails}
-          onEditWebsite={handleEditWebsite}
-        />
-        
-        <WebsiteTabsContent 
-          tabValue="published"
-          websites={websites}
-          filteredWebsites={websites.filter(w => w.status === 'published')}
-          onPushToGithub={handlePushToGithub}
-          onViewDetails={handleViewDetails}
-          onEditWebsite={handleEditWebsite}
-        />
-      </Tabs>
+      ) : !isConnected ? (
+        <div className="text-center p-10 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+          <p className="text-gray-500 mb-4">Connect to GitHub to view your generated websites</p>
+          <Button 
+            onClick={() => setIsGitHubDialogOpen(true)}
+            variant="outline"
+          >
+            <Github className="h-4 w-4 mr-2" />
+            Connect to GitHub
+          </Button>
+        </div>
+      ) : websites.length === 0 ? (
+        <div className="text-center p-10 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+          <p className="text-gray-500 mb-4">No websites generated yet</p>
+          <Button 
+            onClick={() => navigate('/templates')}
+            variant="outline"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Generate Your First Website
+          </Button>
+        </div>
+      ) : (
+        <Tabs defaultValue="all">
+          <TabsList>
+            <TabsTrigger value="all">All Websites</TabsTrigger>
+            <TabsTrigger value="published">Published</TabsTrigger>
+            <TabsTrigger value="draft">Draft</TabsTrigger>
+          </TabsList>
+          <WebsiteTabsContent
+            tabValue="all"
+            websites={websites}
+            onViewDetails={handleViewDetails}
+            onEditWebsite={handleEditWebsite}
+            onPushToGithub={handlePushToGithub}
+          />
+          <WebsiteTabsContent
+            tabValue="published"
+            websites={websites}
+            onViewDetails={handleViewDetails}
+            onEditWebsite={handleEditWebsite}
+            onPushToGithub={handlePushToGithub}
+          />
+          <WebsiteTabsContent
+            tabValue="draft"
+            websites={websites}
+            onViewDetails={handleViewDetails}
+            onEditWebsite={handleEditWebsite}
+            onPushToGithub={handlePushToGithub}
+          />
+        </Tabs>
+      )}
 
       {selectedWebsite && (
         <>
-          <WebsiteDetails 
+          <WebsiteDetails
             website={selectedWebsite}
             isOpen={isDialogOpen}
             onClose={() => setIsDialogOpen(false)}
           />
-
           <EditWebsiteDialog
             website={selectedWebsite}
             isOpen={isEditDialogOpen}
@@ -262,7 +247,7 @@ const WebsitesPage = () => {
           />
         </>
       )}
-      
+
       <GitHubConnectionDialog
         isOpen={isGitHubDialogOpen}
         onClose={() => setIsGitHubDialogOpen(false)}

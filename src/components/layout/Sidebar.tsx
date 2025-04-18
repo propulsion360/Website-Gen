@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { FileText, Globe, Users, Github } from 'lucide-react';
+import { FileText, Globe, Users, Github, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const Sidebar = () => {
@@ -22,6 +21,11 @@ const Sidebar = () => {
       title: 'Client Management', 
       path: '/clients', 
       icon: <Users className="w-5 h-5" /> 
+    },
+    { 
+      title: 'Settings', 
+      path: '/settings', 
+      icon: <Settings className="w-5 h-5" /> 
     },
   ];
 

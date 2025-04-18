@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -10,6 +9,7 @@ interface PageHeaderProps {
     label: string;
     icon?: React.ReactNode;
     onClick: () => void;
+    disabled?: boolean;
   };
 }
 
@@ -24,7 +24,11 @@ const PageHeader = ({ title, description, actionButton }: PageHeaderProps) => {
           )}
         </div>
         {actionButton && (
-          <Button onClick={actionButton.onClick} className="min-w-32">
+          <Button 
+            onClick={actionButton.onClick} 
+            className="min-w-32"
+            disabled={actionButton.disabled}
+          >
             {actionButton.icon && <span className="mr-2">{actionButton.icon}</span>}
             {actionButton.label}
           </Button>

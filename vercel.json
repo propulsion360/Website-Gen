@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "github": {
+    "silent": true
+  },
+  "builds": [
+    { "src": "package.json", "use": "@vercel/static-build" }
+  ],
+  "routes": [
+    {
+      "src": "/templates/(.*)",
+      "dest": "https://template.propulsion360.com/$1"
+    },
+    {
+      "src": "/sites/(.*)",
+      "dest": "https://site.propulsion360.com/$1"
+    }
+  ]
+} 
